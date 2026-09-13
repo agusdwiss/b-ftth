@@ -11,16 +11,16 @@ import (
 )
 
 type RegisterRequest struct {
-	OltID        				interface{} `json:"olt_id"` 
-	SN           				string      `json:"sn"`
-	CustomerName 				string      `json:"customer_name"`
-	Description 				string      `json:"description"`
-	PppoeUser    				string      `json:"pppoe_user"`
-	PppoePass    				string      `json:"pppoe_pass"`
+	OltID        interface{} `json:"olt_id"`
+	SN           string      `json:"sn"`
+	CustomerName string      `json:"customer_name"`
+	Description  string      `json:"description"`
+	PppoeUser    string      `json:"pppoe_user"`
+	PppoePass    string      `json:"pppoe_pass"`
 }
 
 func RegisterONT(c *fiber.Ctx) error {
-	userIDFloat := c.Locals("user_id").(float64) 
+	userIDFloat := c.Locals("user_id").(float64)
 	userID := uint(userIDFloat)
 
 	req := new(RegisterRequest)
@@ -29,8 +29,12 @@ func RegisterONT(c *fiber.Ctx) error {
 	}
 
 	snUpper := strings.ToUpper(req.SN)
-	if req.CustomerName == "" { req.CustomerName = "-" }
-	if req.Description == "" { req.Description = "-" }
+	if req.CustomerName == "" {
+		req.CustomerName = "-"
+	}
+	if req.Description == "" {
+		req.Description = "-"
+	}
 
 	var olts []database.Olt
 
@@ -51,9 +55,12 @@ func RegisterONT(c *fiber.Ctx) error {
 			return c.Status(500).JSON(fiber.Map{"success": false, "detail": err.Error()})
 		}
 		if res["success"] == true {
-			return c.Status(200).JSON(res) 
+			return c.Status(200).JSON(res)
 		}
 		if res["error_type"] == "FULL" {
+			return c.Status(500).JSON(fiber.Map{"success": false, "detail": res["message"]})
+		}
+		if res["error_type"] == "INSERT_DB_FAILED" {
 			return c.Status(500).JSON(fiber.Map{"success": false, "detail": res["message"]})
 		}
 	}
@@ -66,7 +73,7 @@ func RegisterONT(c *fiber.Ctx) error {
 func GetUnconfiguredOnts(c *fiber.Ctx) error {
 	userIDFloat := c.Locals("user_id").(float64)
 	userID := uint(userIDFloat)
-	
+
 	oltIDQuery := c.Query("olt_id", "ALL")
 
 	var olts []database.Olt
@@ -87,7 +94,7 @@ func GetUnconfiguredOnts(c *fiber.Ctx) error {
 	for _, olt := range olts {
 		// Mengambil 3 nilai (onts, rawOutput, error)
 		onts, rawOutput, err := services.GetUncfgOnts(olt)
-		
+
 		if err != nil {
 			debugInfo[olt.Name] = err.Error()
 			continue
@@ -115,7 +122,7 @@ func GetUnconfiguredOnts(c *fiber.Ctx) error {
 func GetAllOntsSnmp(c *fiber.Ctx) error {
 	userIDFloat := c.Locals("user_id").(float64)
 	userID := uint(userIDFloat)
-	
+
 	oltIDQuery := c.Query("olt_id", "ALL")
 
 	var olts []database.Olt
@@ -174,9 +181,13 @@ func GetOntsFromDatabase(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	search := c.Query("search", "")
-	
-	if page < 1 { page = 1 }
-	if limit < 1 { limit = 10 }
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
 	offset := (page - 1) * limit
 
 	// Jika user ini belum memiliki OLT sama sekali, langsung kembalikan array kosong
@@ -200,7 +211,7 @@ func GetOntsFromDatabase(c *fiber.Ctx) error {
 	// 3. Query Database: KUNCI UTAMA KEAMANAN ADA DI SINI
 	// Batasi pencarian ONT hanya pada OLT yang ID-nya ada di dalam userOltIDs
 	query := database.DB.Model(&database.Ont{}).Where("olt_id IN ?", userOltIDs)
-	
+
 	// Jika ada parameter pencarian (Serial Number atau Nama)
 	if search != "" {
 		// Menggunakan kurung buka/tutup di GORM untuk kondisi OR yang aman dari kebocoran
@@ -239,13 +250,13 @@ func SyncAllOnts(c *fiber.Ctx) error {
 	// Gunakan WaitGroup untuk menjalankan SNMP secara paralel
 	var wg sync.WaitGroup
 	var mu sync.Mutex // Untuk mencegah race condition saat menulis log error
-	
+
 	debugErrs := make(map[string]string)
 	totalSynced := 0
 
 	for _, olt := range olts {
 		wg.Add(1)
-		
+
 		// Jalankan fungsi dalam Goroutine
 		go func(targetOlt database.Olt) {
 			defer wg.Done()
@@ -274,20 +285,20 @@ func SyncAllOnts(c *fiber.Ctx) error {
 			var dbOnts []database.Ont
 			for _, o := range onts {
 				dbOnts = append(dbOnts, database.Ont{
-					OltID:    		targetOlt.ID,
-					OltName:  		targetOlt.Name,
-					OnuName:  		o["onu_name"].(string),
-					Description:  o["description"].(string),
-					Sn:       		o["sn"].(string),
-					OnuIndex: 		o["onu_index"].(string),
-					Status:   		o["status"].(string),
+					OltID:       targetOlt.ID,
+					OltName:     targetOlt.Name,
+					OnuName:     o["onu_name"].(string),
+					Description: o["description"].(string),
+					Sn:          o["sn"].(string),
+					OnuIndex:    o["onu_index"].(string),
+					Status:      o["status"].(string),
 				})
 			}
 
 			if len(dbOnts) > 0 {
 				// Insert ke MySQL secara bertahap (500 data per batch) agar anti-gagal
 				database.DB.CreateInBatches(&dbOnts, 500)
-				
+
 				mu.Lock()
 				totalSynced += len(dbOnts)
 				mu.Unlock()
@@ -300,10 +311,10 @@ func SyncAllOnts(c *fiber.Ctx) error {
 	wg.Wait()
 
 	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Sinkronisasi selesai",
+		"success":      true,
+		"message":      "Sinkronisasi selesai",
 		"total_synced": totalSynced,
-		"errors":  debugErrs,
+		"errors":       debugErrs,
 	})
 }
 

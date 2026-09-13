@@ -32,15 +32,15 @@ type Olt struct {
 }
 
 type Ont struct {
-	ID        	uint      `gorm:"primaryKey"`
-	OltID     	uint      `gorm:"index;not null"`
-	OltName   	string    `gorm:"type:varchar(100)"`
-	OnuName	 		string    `gorm:"type:varchar(127)"`
-	Description	string    `gorm:"type:varchar(200)"`
-	Sn        	string    `gorm:"type:varchar(50);index;not null"`
-	OnuIndex  	string    `gorm:"type:varchar(50)"`
-	Status    	string    `gorm:"type:varchar(20)"`
-	UpdatedAt 	time.Time `gorm:"autoUpdateTime"`
+	ID          uint      `gorm:"primaryKey"`
+	OltID       uint      `gorm:"index;not null"`
+	OltName     string    `gorm:"type:varchar(100)"`
+	OnuName     string    `gorm:"type:varchar(127)"`
+	Description string    `gorm:"type:varchar(200)"`
+	Sn          string    `gorm:"type:varchar(50);index;not null"`
+	OnuIndex    string    `gorm:"type:varchar(50)"`
+	Status      string    `gorm:"type:varchar(20)"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 }
 
 var DB *gorm.DB
@@ -53,7 +53,7 @@ func ConnectDB() {
 		log.Fatal("Gagal koneksi ke database!\n", err)
 	}
 
-	db.AutoMigrate(&User{}, &Olt{}, &Ont{})
+	// db.AutoMigrate(&User{}, &Olt{}, &Ont{})
 
 	log.Println("Database sukses terhubung!")
 	DB = db

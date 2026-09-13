@@ -20,11 +20,11 @@ func readUntil(conn net.Conn, promptRegex *regexp.Regexp, timeout time.Duration)
 		n, err := conn.Read(tmp)
 		if n > 0 {
 			buffer = append(buffer, tmp[:n]...)
-			
+
 			// Jika OLT memunculkan paginasi, kirim spasi
 			if strings.Contains(string(buffer), "--More--") || strings.Contains(string(buffer), "---- More ----") {
 				conn.Write([]byte(" \r\n"))
-				buffer = []byte(strings.Replace(string(buffer), "--More--", "", -1)) 
+				buffer = []byte(strings.Replace(string(buffer), "--More--", "", -1))
 			}
 
 			if promptRegex.Match(buffer) {
@@ -52,15 +52,21 @@ func RegisterOnt(olt database.Olt, sn, customerName, Description, pppoeUser, ppp
 	shellPrompt := regexp.MustCompile(`[#>]\s*$`)
 
 	_, err = readUntil(conn, loginPrompt, 3*time.Second)
-	if err != nil { return nil, fmt.Errorf("timeout menunggu login prompt") }
+	if err != nil {
+		return nil, fmt.Errorf("timeout menunggu login prompt")
+	}
 	conn.Write([]byte(olt.Username + "\r\n"))
 
 	_, err = readUntil(conn, passPrompt, 3*time.Second)
-	if err != nil { return nil, fmt.Errorf("timeout menunggu password prompt") }
+	if err != nil {
+		return nil, fmt.Errorf("timeout menunggu password prompt")
+	}
 	conn.Write([]byte(olt.Password + "\r\n"))
 
 	_, err = readUntil(conn, shellPrompt, 3*time.Second)
-	if err != nil { return nil, fmt.Errorf("gagal login, kredensial salah") }
+	if err != nil {
+		return nil, fmt.Errorf("gagal login, kredensial salah")
+	}
 
 	conn.Write([]byte("terminal length 0\r\n"))
 	readUntil(conn, shellPrompt, 1*time.Second)
@@ -85,7 +91,7 @@ func RegisterOnt(olt database.Olt, sn, customerName, Description, pppoeUser, ppp
 
 	indexRegex := regexp.MustCompile(`onu\s+(\d+)\s+type`)
 	usedIndexesMatch := indexRegex.FindAllStringSubmatch(configOutput, -1)
-	
+
 	usedIndexes := make(map[int]bool)
 	for _, m := range usedIndexesMatch {
 		idx, _ := strconv.Atoi(m[1])
@@ -111,6 +117,7 @@ func RegisterOnt(olt database.Olt, sn, customerName, Description, pppoeUser, ppp
 		}, nil
 	}
 
+	onuIndexStr := fmt.Sprintf("%s:%d", ponInterface, targetIndex)
 	nameCmd := ""
 	descCmd := ""
 	safeName := strings.TrimSpace(customerName)
@@ -140,11 +147,28 @@ func RegisterOnt(olt database.Olt, sn, customerName, Description, pppoeUser, ppp
 		}
 	}
 
+	newONT := database.Ont{
+		OltID:       olt.ID,
+		OltName:     olt.Name,
+		OnuName:     customerName,
+		Description: Description,
+		Sn:          sn,
+		OnuIndex:    onuIndexStr,
+		Status:      "Logging",
+	}
+
+	if err := database.DB.Create(&newONT).Error; err != nil {
+		return map[string]interface{}{
+			"success": false, "error_type": "INSERT_DB_FAILED",
+			"message": "Gagal Menambahkan ONT ke Database",
+		}, nil
+	}
+
 	time.Sleep(1 * time.Second)
 	return map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("ONT %s Berhasil didaftarkan ke OLT [%s]", sn, olt.Name),
-		"onu_id": fmt.Sprintf("%s:%d", ponInterface, targetIndex),
+		"onu_id":  fmt.Sprintf("%s:%d", ponInterface, targetIndex),
 	}, nil
 }
 
@@ -164,15 +188,21 @@ func GetUncfgOnts(olt database.Olt) ([]map[string]interface{}, string, error) {
 	shellPrompt := regexp.MustCompile(`[#>]\s*$`)
 
 	_, err = readUntil(conn, loginPrompt, 3*time.Second)
-	if err != nil { return nil, "", fmt.Errorf("timeout login prompt") }
+	if err != nil {
+		return nil, "", fmt.Errorf("timeout login prompt")
+	}
 	conn.Write([]byte(olt.Username + "\r\n"))
 
 	_, err = readUntil(conn, passPrompt, 3*time.Second)
-	if err != nil { return nil, "", fmt.Errorf("timeout password prompt") }
+	if err != nil {
+		return nil, "", fmt.Errorf("timeout password prompt")
+	}
 	conn.Write([]byte(olt.Password + "\r\n"))
 
 	_, err = readUntil(conn, shellPrompt, 3*time.Second)
-	if err != nil { return nil, "", fmt.Errorf("gagal login ke OLT") }
+	if err != nil {
+		return nil, "", fmt.Errorf("gagal login ke OLT")
+	}
 
 	// 1. MATIKAN PAGINASI (Wajib bagi ZTE agar hasil tidak terpotong)
 	conn.Write([]byte("terminal length 0\r\n"))
@@ -191,8 +221,8 @@ func GetUncfgOnts(olt database.Olt) ([]map[string]interface{}, string, error) {
 		results = append(results, map[string]interface{}{
 			"olt_id":        olt.ID,
 			"olt_name":      olt.Name,
-			"pon_interface": match[1], 
-			"sn":            match[2], 
+			"pon_interface": match[1],
+			"sn":            match[2],
 		})
 	}
 
@@ -213,15 +243,21 @@ func GetOntLiveDetailCLI(olt database.Olt, ponIndex string) (map[string]interfac
 
 	// Proses Login
 	_, err = readUntil(conn, loginPrompt, 5*time.Second)
-	if err != nil { return nil, fmt.Errorf("timeout login prompt") }
+	if err != nil {
+		return nil, fmt.Errorf("timeout login prompt")
+	}
 	conn.Write([]byte(olt.Username + "\r\n"))
 
 	_, err = readUntil(conn, passPrompt, 5*time.Second)
-	if err != nil { return nil, fmt.Errorf("timeout password prompt") }
+	if err != nil {
+		return nil, fmt.Errorf("timeout password prompt")
+	}
 	conn.Write([]byte(olt.Password + "\r\n"))
 
 	_, err = readUntil(conn, shellPrompt, 5*time.Second)
-	if err != nil { return nil, fmt.Errorf("gagal login ke OLT") }
+	if err != nil {
+		return nil, fmt.Errorf("gagal login ke OLT")
+	}
 
 	// Matikan paginasi
 	conn.Write([]byte("terminal length 0\r\n"))
@@ -249,7 +285,7 @@ func GetOntLiveDetailCLI(olt database.Olt, ponIndex string) (map[string]interfac
 	// Cari pola "Rx:-8.649(dbm)" atau "Rx :-13.150(dbm)"
 	rxRegex := regexp.MustCompile(`(?i)Rx\s*:\s*(-?[\d\.]+)`)
 	rxMatches := rxRegex.FindAllStringSubmatch(powOutput, -1)
-	
+
 	// rxMatches biasanya menemukan 2 baris: Index [0] milik OLT(up), Index [1] milik ONU(down)
 	if len(rxMatches) >= 2 {
 		parsedRx, err := strconv.ParseFloat(rxMatches[1][1], 64)

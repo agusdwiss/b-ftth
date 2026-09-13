@@ -15,7 +15,7 @@ type OltCreateRequest struct {
 	Username       string `json:"username"`
 	Password       string `json:"password"`
 	OltType        string `json:"olt_type"`
-	SnmpPort			 int    `json:"snmp_port"`
+	SnmpPort       int    `json:"snmp_port"`
 	SnmpCommunity  string `json:"snmp_community"`
 	TemplateScript string `json:"template_script"`
 }
@@ -28,7 +28,7 @@ type OltUpdateRequest struct {
 	Username       *string `json:"username"`
 	Password       *string `json:"password"`
 	OltType        *string `json:"olt_type"`
-	SnmpPort			 *int    `json:"snmp_port"`
+	SnmpPort       *int    `json:"snmp_port"`
 	SnmpCommunity  *string `json:"snmp_community"`
 	TemplateScript *string `json:"template_script"`
 }
@@ -40,7 +40,7 @@ type OltSafeResponse struct {
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
 	OltType        string `json:"olt_type"`
-	SnmpPort			 int    `json:"snmp_port"`
+	SnmpPort       int    `json:"snmp_port"`
 	SnmpCommunity  string `json:"snmp_community"`
 	TemplateScript string `json:"template_script"`
 }
@@ -67,7 +67,7 @@ func GetOlts(c *fiber.Ctx) error {
 			Host:           o.Host,
 			Port:           o.Port,
 			OltType:        o.OltType,
-			SnmpPort:			 o.SnmpPort,
+			SnmpPort:       o.SnmpPort,
 			SnmpCommunity:  o.SnmpCommunity,
 			TemplateScript: o.TemplateScript,
 		})
@@ -106,7 +106,7 @@ func CreateOlt(c *fiber.Ctx) error {
 		Username:       req.Username,
 		Password:       req.Password,
 		OltType:        req.OltType,
-		SnmpPort:			 	req.SnmpPort,
+		SnmpPort:       req.SnmpPort,
 		SnmpCommunity:  req.SnmpCommunity,
 		TemplateScript: req.TemplateScript,
 	}
@@ -143,15 +143,33 @@ func UpdateOlt(c *fiber.Ctx) error {
 	}
 
 	// Update hanya field yang dikirimkan di JSON (Partial Update)
-	if req.Name != nil { olt.Name = *req.Name }
-	if req.Host != nil { olt.Host = *req.Host }
-	if req.Port != nil { olt.Port = *req.Port }
-	if req.Username != nil { olt.Username = *req.Username }
-	if req.Password != nil { olt.Password = *req.Password }
-	if req.OltType != nil { olt.OltType = *req.OltType }
-	if req.SnmpPort != nil { olt.SnmpPort = *req.SnmpPort }
-	if req.SnmpCommunity != nil { olt.SnmpCommunity = *req.SnmpCommunity }
-	if req.TemplateScript != nil { olt.TemplateScript = *req.TemplateScript }
+	if req.Name != nil {
+		olt.Name = *req.Name
+	}
+	if req.Host != nil {
+		olt.Host = *req.Host
+	}
+	if req.Port != nil {
+		olt.Port = *req.Port
+	}
+	if req.Username != nil {
+		olt.Username = *req.Username
+	}
+	if req.Password != nil {
+		olt.Password = *req.Password
+	}
+	if req.OltType != nil {
+		olt.OltType = *req.OltType
+	}
+	if req.SnmpPort != nil {
+		olt.SnmpPort = *req.SnmpPort
+	}
+	if req.SnmpCommunity != nil {
+		olt.SnmpCommunity = *req.SnmpCommunity
+	}
+	if req.TemplateScript != nil {
+		olt.TemplateScript = *req.TemplateScript
+	}
 
 	// Simpan perubahan ke database
 	if err := database.DB.Save(&olt).Error; err != nil {
@@ -175,7 +193,7 @@ func DeleteOlt(c *fiber.Ctx) error {
 
 	// Hapus OLT dengan filter ganda (id & user_id) untuk mencegah menghapus OLT tenant lain
 	result := database.DB.Where("id = ? AND user_id = ?", oltID, userID).Delete(&database.Olt{})
-	
+
 	if result.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"success": false, "detail": result.Error.Error()})
 	}
